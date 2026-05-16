@@ -25,6 +25,7 @@ var (
 	ErrArchiveEncrypted      = errors.New("rardecode: archive encrypted, password required")
 	ErrArchivedFileEncrypted = errors.New("rardecode: archived files encrypted, password required")
 	ErrMultiVolume           = errors.New("rardecode: multi-volume archive continues in next file")
+	ErrTruncatedVint         = errors.New("rardecode: truncated vint")
 	errVolumeOrArchiveEnd    = errors.New("rardecode: archive or volume end")
 )
 
@@ -61,21 +62,19 @@ func (b *readBuf) bytes(n int) []byte {
 	return v
 }
 
-func (b *readBuf) uvarint() uint64 {
+func (b *readBuf) uvarint() (uint64, error) {
 	var x uint64
 	var s uint
 	for i, n := range *b {
 		if n < 0x80 {
 			*b = (*b)[i+1:]
-			return x | uint64(n)<<s
+			return x | uint64(n)<<s, nil
 		}
 		x |= uint64(n&0x7f) << s
 		s += 7
-
 	}
-	// if we run out of bytes, just return 0
 	*b = (*b)[len(*b):]
-	return 0
+	return 0, ErrTruncatedVint
 }
 
 // fileBlockHeader represents a file block in a RAR archive.
