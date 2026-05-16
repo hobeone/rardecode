@@ -912,6 +912,9 @@ func (m *model) update(minC, maxC context, s *state) context {
 		if len(states) > 1 {
 			for states[i].sym != s.sym {
 				i++
+				if i >= len(states) {
+					return context(0)
+				}
 			}
 			if i > 0 && states[i].freq >= states[i-1].freq {
 				states[i-1], states[i] = states[i], states[i-1]
