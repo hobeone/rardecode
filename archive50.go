@@ -456,6 +456,12 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (f *fileBlockHeader, err e
 	if len(h.data) < nlen {
 		return nil, ErrCorruptFileHeader
 	}
+	// Per spec "Name": Names are UTF-8 without trailing zero. Unix
+	// filenames with non-UTF-8 bytes use a private-use-area encoding:
+	// high ASCII chars (0x80-0xFF) are mapped to U+E080-U+E0FF and a
+	// U+FFFE marker is inserted. This library stores the name as-is;
+	// callers extracting on Unix should check for U+FFFE and reverse
+	// the mapping to recover the original byte values.
 	f.Name = string(h.data.bytes(nlen))
 
 	// parse optional extra records
