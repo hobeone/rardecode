@@ -353,6 +353,8 @@ func (a *archive50) parseFilePrecisionTimeRecord(b *readBuf, f *fileBlockHeader)
 
 func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) {
 	f := new(fileBlockHeader)
+	f.UnixUID = -1
+	f.UnixGID = -1
 
 	f.HeaderEncrypted = a.blockKey != nil
 	f.first = h.flags&block5DataNotFirst == 0
@@ -487,8 +489,46 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 			if len(e.data) >= nlen {
 				f.RedirTarget = string(e.data.bytes(nlen))
 			}
-		case 6:
-			// TODO: owner
+		case 6: // unix owner
+			ownerFlagsV, err := e.data.uvarint()
+			if err != nil {
+				return nil, err
+			}
+			ownerFlags := ownerFlagsV
+			if ownerFlags&0x01 != 0 { // user name present
+				nlenV, err := e.data.uvarint()
+				if err != nil {
+					return nil, err
+				}
+				nlen := int(nlenV)
+				if len(e.data) >= nlen {
+					f.UnixOwner = string(e.data.bytes(nlen))
+				}
+			}
+			if ownerFlags&0x02 != 0 { // group name present
+				nlenV, err := e.data.uvarint()
+				if err != nil {
+					return nil, err
+				}
+				nlen := int(nlenV)
+				if len(e.data) >= nlen {
+					f.UnixGroup = string(e.data.bytes(nlen))
+				}
+			}
+			if ownerFlags&0x04 != 0 { // numeric UID present
+				uidV, err := e.data.uvarint()
+				if err != nil {
+					return nil, err
+				}
+				f.UnixUID = int(uidV)
+			}
+			if ownerFlags&0x08 != 0 { // numeric GID present
+				gidV, err := e.data.uvarint()
+				if err != nil {
+					return nil, err
+				}
+				f.UnixGID = int(gidV)
+			}
 		}
 		if err != nil {
 			return nil, err
