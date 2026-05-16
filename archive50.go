@@ -404,6 +404,9 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (f *fileBlockHeader, err e
 		if f.first {
 			f.hash = newLittleEndianCRC32
 		}
+		// Note: Same split-file limitation as BLAKE2sp hash (see case 2
+		// in extra records below). For non-last parts of split files, the
+		// spec says CRC32 covers packed data, not unpacked.
 	}
 
 	flagsV, err = h.data.uvarint() // compression flags
@@ -472,6 +475,14 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (f *fileBlockHeader, err e
 				if f.first {
 					f.hash = newBLAKE2sp
 				}
+				// Note: Per spec "File hash record", for files split between
+				// volumes, non-last parts store a hash of the packed data in
+				// the current volume, while the last part stores the unpacked
+				// data hash. This library currently only verifies the hash on
+				// the first (and typically only/last) block, where it hashes
+				// the unpacked data. Verifying intermediate split-file parts
+				// would require hashing packed data before decompression, which
+				// needs architectural changes to the read pipeline.
 			}
 		case 3:
 			err = a.parseFilePrecisionTimeRecord(&e.data, f)
