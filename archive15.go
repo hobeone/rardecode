@@ -241,8 +241,14 @@ func (a *archive15) getKeys(salt []byte) (key, iv []byte) {
 	return key, iv
 }
 
-func (a *archive15) parseFileHeader(h *blockHeader15) (*fileBlockHeader, error) {
-	f := new(fileBlockHeader)
+func (a *archive15) parseFileHeader(h *blockHeader15) (f *fileBlockHeader, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			f = nil
+			err = ErrCorruptBlockHeader
+		}
+	}()
+	f = new(fileBlockHeader)
 
 	f.first = h.flags&fileSplitBefore == 0
 	f.last = h.flags&fileSplitAfter == 0
