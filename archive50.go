@@ -69,7 +69,11 @@ const (
 	cacheSize50   = 4
 	maxPbkdf2Salt = 64
 	pwCheckSize   = 8
-	maxKdfCount   = 24
+	// maxKdfCount is the maximum accepted PBKDF2 KDF count (binary logarithm).
+	// Per spec "File encryption record": "RAR can refuse to process KDF count
+	// exceeding some threshold. Concrete value of threshold is version
+	// dependent." This matches UnRAR's threshold of 24 (2^24 = ~16M iterations).
+	maxKdfCount = 24
 
 	maxDictSize = 0x1000000000 // maximum dictionary size 64GB
 )
