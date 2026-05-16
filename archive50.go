@@ -411,8 +411,14 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 			if encErr := a.parseFileEncryptionRecord(e.data, f); encErr != nil {
 				f.errs = append(f.errs, encErr)
 			}
-		case 2:
-			// TODO: hash
+		case 2: // file hash
+			hashType := e.data.uvarint()
+			if hashType == 0 && len(e.data) >= blake2sSize256 {
+				f.sum = slices.Clone(e.data.bytes(blake2sSize256))
+				if f.first {
+					f.hash = newBLAKE2sp
+				}
+			}
 		case 3:
 			err = a.parseFilePrecisionTimeRecord(&e.data, f)
 		case 4: // version
