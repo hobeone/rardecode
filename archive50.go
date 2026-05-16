@@ -470,8 +470,23 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 				return nil, err
 			}
 			f.Version = int(versionV)
-		case 5:
-			// TODO: redirection
+		case 5: // file system redirection
+			redirTypeV, err := e.data.uvarint()
+			if err != nil {
+				return nil, err
+			}
+			f.RedirType = int(redirTypeV)
+			if _, err = e.data.uvarint(); err != nil { // flags (reserved)
+				return nil, err
+			}
+			nlenV, err := e.data.uvarint() // name length
+			if err != nil {
+				return nil, err
+			}
+			nlen := int(nlenV)
+			if len(e.data) >= nlen {
+				f.RedirTarget = string(e.data.bytes(nlen))
+			}
 		case 6:
 			// TODO: owner
 		}

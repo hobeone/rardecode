@@ -53,6 +53,8 @@ type FileHeader struct {
 	CreationTime     time.Time // creation time (non-zero if set)
 	AccessTime       time.Time // access time (non-zero if set)
 	Version          int       // file version
+	RedirType        int       // redirection type (0=none, 1=unix symlink, 2=win symlink file, 3=win symlink dir, 4=hardlink, 5=win junction)
+	RedirTarget      string    // redirection target path (empty if not a redirect)
 }
 
 // Mode returns an fs.FileMode for the file, calculated from the Attributes field.
