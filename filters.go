@@ -153,7 +153,7 @@ func abs(n int) int {
 }
 
 func filterRGBV3(r map[int]uint32, global, buf []byte, offset int64) ([]byte, error) {
-	width := int(r[0] - 3)
+	width := int(int32(r[0]) - 3)
 	posR := int(r[1])
 	if posR < 0 || width < 0 {
 		return buf, nil
