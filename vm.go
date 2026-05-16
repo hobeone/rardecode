@@ -388,9 +388,12 @@ func jae(v *vm, bm bool, op []operand) {
 }
 
 func push(v *vm, bm bool, op []operand) {
+	if v.r[7] < 4 {
+		v.setIP(0xFFFFFFFF) // trigger end of program
+		return
+	}
 	v.r[7] -= 4
 	opRI(7).set(v, false, op[0].get(v, false))
-
 }
 
 func pop(v *vm, bm bool, op []operand) {
@@ -399,6 +402,10 @@ func pop(v *vm, bm bool, op []operand) {
 }
 
 func call(v *vm, bm bool, op []operand) {
+	if v.r[7] < 4 {
+		v.setIP(0xFFFFFFFF) // trigger end of program
+		return
+	}
 	v.r[7] -= 4
 	opRI(7).set(v, false, v.ip+1)
 	v.setIP(op[0].get(v, false))
@@ -491,6 +498,10 @@ func popa(v *vm, bm bool, op []operand) {
 }
 
 func pushf(v *vm, bm bool, op []operand) {
+	if v.r[7] < 4 {
+		v.setIP(0xFFFFFFFF) // trigger end of program
+		return
+	}
 	v.r[7] -= 4
 	opRI(7).set(v, false, v.fl)
 }
