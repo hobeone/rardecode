@@ -71,6 +71,7 @@ type FileHeader struct {
 	UnixGroup        string    // Unix group name (empty if not set)
 	UnixUID          int       // Unix UID (-1 if not set)
 	UnixGID          int       // Unix GID (-1 if not set)
+	ServiceData      []byte    // raw service data from extra type 0x07 (nil if not present)
 }
 
 // Mode returns an fs.FileMode for the file, calculated from the Attributes field

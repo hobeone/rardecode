@@ -554,6 +554,13 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (f *fileBlockHeader, err e
 				}
 				f.UnixGID = int(gidV)
 			}
+		case 7: // service data (per spec "Service data record")
+			// Contents are opaque and depend on the service header type
+			// (e.g., CMT for comments, QO for quick open). Store raw bytes
+			// for callers to interpret.
+			if len(e.data) > 0 {
+				f.ServiceData = slices.Clone([]byte(e.data))
+			}
 		}
 		if err != nil {
 			return nil, err
