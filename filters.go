@@ -118,6 +118,9 @@ func itaniumFilterV3(r map[int]uint32, global, buf []byte, offset int64) ([]byte
 }
 
 func filterDelta(n int, buf []byte) ([]byte, error) {
+	if n <= 0 || n > len(buf) {
+		return buf, nil
+	}
 	var res []byte
 	l := len(buf)
 	if cap(buf) >= 2*l {
