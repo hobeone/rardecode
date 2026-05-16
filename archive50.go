@@ -807,7 +807,13 @@ func (a *archive50) init(br *bufVolumeReader) (int, error) {
 	return volnum, nil
 }
 
-// nextBlock advances to the next file block in the archive
+// nextBlock advances to the next file block in the archive.
+//
+// Service headers (type 3) include archive comments (name "CMT"),
+// quick open records (name "QO"), and per-file metadata (NTFS streams,
+// etc.). Per spec "Quick open header", the QO record stores cached
+// file headers for random-access seeking. Since this library reads
+// sequentially, QO data is exposed but not specifically interpreted.
 func (a *archive50) nextBlock(br *bufVolumeReader) (*fileBlockHeader, error) {
 	for {
 		// get next block header
