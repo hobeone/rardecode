@@ -63,9 +63,16 @@ func (b *readBuf) bytes(n int) []byte {
 }
 
 func (b *readBuf) uvarint() (uint64, error) {
+	// Per spec: "Currently RAR format uses vint to store up to 64 bit
+	// integers, resulting in 10 bytes maximum."
+	const maxVintBytes = 10
 	var x uint64
 	var s uint
 	for i, n := range *b {
+		if i >= maxVintBytes {
+			*b = (*b)[len(*b):]
+			return 0, ErrTruncatedVint
+		}
 		if n < 0x80 {
 			*b = (*b)[i+1:]
 			return x | uint64(n)<<s, nil
