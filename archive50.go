@@ -559,10 +559,15 @@ func (a *archive50) readBlockHeader(r byteReader) (*blockHeader50, error) {
 	}
 	b := readBuf(sizeBuf)
 	crc := b.uint32()
-	// TODO: check size is valid
+	// Per spec: "This field must not be longer than 3 bytes in current
+	// implementation, resulting in 2 MB maximum header size."
 	sizeV, err := b.uvarint() // header size
 	if err != nil {
 		return nil, err
+	}
+	const maxHeaderSize = 2 * 1024 * 1024 // 2MB per spec
+	if sizeV == 0 || sizeV > maxHeaderSize {
+		return nil, ErrCorruptBlockHeader
 	}
 	size := int(sizeV)
 
