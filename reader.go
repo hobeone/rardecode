@@ -72,13 +72,24 @@ type FileHeader struct {
 	UnixGID          int       // Unix GID (-1 if not set)
 }
 
-// Mode returns an fs.FileMode for the file, calculated from the Attributes field.
+// Mode returns an fs.FileMode for the file, calculated from the Attributes field
+// and the RedirType field (for RAR5 archives with redirection records).
 func (f *FileHeader) Mode() fs.FileMode {
 	var m fs.FileMode
 
 	if f.IsDir {
 		m = fs.ModeDir
 	}
+
+	// RAR5 redirection record is the authoritative source for symlinks.
+	// Per spec "File system redirection record" (extra type 0x05), the
+	// redirection type field distinguishes symlinks, junctions, and
+	// hard links independent of the host OS attributes.
+	switch f.RedirType {
+	case RedirUnixSymlink, RedirWinSymlink:
+		m |= fs.ModeSymlink
+	}
+
 	if f.HostOS == HostOSWindows {
 		if f.IsDir {
 			m |= 0777
@@ -107,7 +118,8 @@ func (f *FileHeader) Mode() fs.FileMode {
 		m |= fs.ModeSetuid
 	}
 
-	// Check for additional file types.
+	// Fallback: check Unix file type bits from attributes.
+	// This handles RAR4 archives where RedirType is not set.
 	if f.Attributes&0xF000 == 0xA000 {
 		m |= fs.ModeSymlink
 	}
