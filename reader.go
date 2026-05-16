@@ -650,7 +650,7 @@ func (cr *checksumReader) ReadByte() (byte, error) {
 }
 
 func (cr *checksumReader) writeToN(w io.Writer, n int64) (int64, error) {
-	panic("checksumReader.writeToN should never be called")
+	return 0, errors.New("rardecode: checksumReader.writeToN should never be called")
 }
 
 func (cr *checksumReader) WriteTo(w io.Writer) (int64, error) {
