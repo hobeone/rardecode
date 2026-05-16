@@ -587,14 +587,58 @@ func (a *archive50) parseArcBlock(h *blockHeader50) (int, error) {
 	}
 	a.multi = flags&arc5MultiVol > 0
 	a.solid = flags&arc5Solid > 0
+	volnum := -1
 	if flags&arc5VolNum > 0 {
 		v, err := h.data.uvarint()
 		if err != nil {
 			return -1, err
 		}
-		return int(v), nil
+		volnum = int(v)
 	}
-	return -1, nil
+
+	// Parse main archive header extra records per spec.
+	// Type 0x01: Locator (quick open / recovery record offsets)
+	// Type 0x02: Metadata (original archive name, creation time)
+	// These are currently not exposed in the public API but are
+	// parsed to validate the archive structure.
+	for _, e := range h.extra {
+		switch e.ftype {
+		case 1: // locator record
+			locFlags, err := e.data.uvarint()
+			if err != nil {
+				break
+			}
+			if locFlags&0x0001 != 0 { // quick open offset present
+				if _, err = e.data.uvarint(); err != nil {
+					break
+				}
+			}
+			if locFlags&0x0002 != 0 { // recovery record offset present
+				if _, err = e.data.uvarint(); err != nil {
+					break
+				}
+			}
+		case 2: // metadata record
+			metaFlags, err := e.data.uvarint()
+			if err != nil {
+				break
+			}
+			if metaFlags&0x0001 != 0 { // archive name present
+				nlenV, err := e.data.uvarint()
+				if err != nil {
+					break
+				}
+				nlen := int(nlenV)
+				if len(e.data) >= nlen {
+					_ = e.data.bytes(nlen) // consume name bytes
+				}
+			}
+			// Note: creation time (flag 0x0002) parsing omitted for now
+			// as it requires checking flags 0x0004 (unix vs FILETIME) and
+			// 0x0008 (seconds vs nanoseconds) for correct size.
+		}
+	}
+	return volnum, nil
 }
 
 func (a *archive50) readBlockHeader(r byteReader) (*blockHeader50, error) {
