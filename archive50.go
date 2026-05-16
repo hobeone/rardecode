@@ -21,11 +21,14 @@ const (
 	block5Encrypt = 4
 	block5End     = 5
 
-	// block flags
-	block5HasExtra     = 0x0001
-	block5HasData      = 0x0002
-	block5DataNotFirst = 0x0008
-	block5DataNotLast  = 0x0010
+	// block flags (per spec "General archive block format", Header flags)
+	block5HasExtra        = 0x0001 // extra area is present
+	block5HasData         = 0x0002 // data area is present
+	block5SkipIfUnknown   = 0x0004 // unknown-type blocks with this flag must be skipped when updating
+	block5DataNotFirst    = 0x0008 // data area is continuing from previous volume
+	block5DataNotLast     = 0x0010 // data area is continuing in next volume
+	block5DependsPrecFile = 0x0020 // block depends on preceding file block
+	block5PreserveChild   = 0x0040 // preserve a child block if host block is modified
 
 	// end block flags
 	endArc5NotLast = 0x0001
@@ -746,9 +749,12 @@ func (a *archive50) nextBlock(br *bufVolumeReader) (*fileBlockHeader, error) {
 		case block5Service:
 			// Service headers (type 3) use the same structure as file headers.
 			// Parse them to expose metadata (e.g., "CMT" archive comments).
+			// Per spec flag 0x0020 (block5DependsPrecFile), service headers
+			// typically depend on the preceding file block.
 			f, err := a.parseFileHeader(h)
 			if f != nil {
 				f.isService = true
+				f.IsService = true
 			}
 			return f, err
 		case block5End:
