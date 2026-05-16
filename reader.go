@@ -55,6 +55,10 @@ type FileHeader struct {
 	Version          int       // file version
 	RedirType        int       // redirection type (0=none, 1=unix symlink, 2=win symlink file, 3=win symlink dir, 4=hardlink, 5=win junction)
 	RedirTarget      string    // redirection target path (empty if not a redirect)
+	UnixOwner        string    // Unix owner name (empty if not set)
+	UnixGroup        string    // Unix group name (empty if not set)
+	UnixUID          int       // Unix UID (-1 if not set)
+	UnixGID          int       // Unix GID (-1 if not set)
 }
 
 // Mode returns an fs.FileMode for the file, calculated from the Attributes field.
