@@ -239,25 +239,34 @@ func (f *packedFileReader) nextBlock() error {
 	if f.h.last {
 		return io.EOF
 	}
-	h, err := f.v.nextBlock()
-	if err != nil {
-		if err == io.EOF {
-			// archive ended, but file hasn't
-			return ErrUnexpectedArcEnd
-		} else if err == errVolumeOrArchiveEnd {
-			return ErrMultiVolume
+	for {
+		h, err := f.v.nextBlock()
+		if err != nil {
+			if err == io.EOF {
+				// archive ended, but file hasn't
+				return ErrUnexpectedArcEnd
+			} else if err == errVolumeOrArchiveEnd {
+				return ErrMultiVolume
+			}
+			return err
 		}
-		return err
+		// Service headers (e.g., QO quick open, CMT comment, RR recovery
+		// record) can appear between file data blocks and end-of-archive
+		// markers in multi-volume archives. Skip them when searching for
+		// file continuation blocks.
+		if h.isService {
+			continue
+		}
+		if h.first || h.Name != f.h.Name {
+			return ErrInvalidFileBlock
+		}
+		h.packedOff = f.h.packedOff + f.h.PackedSize
+		h.blocknum = f.h.blocknum + 1
+		f.h = h
+		f.offset = h.dataOff
+		f.blocks.addBlock(h)
+		return nil
 	}
-	if h.first || h.Name != f.h.Name {
-		return ErrInvalidFileBlock
-	}
-	h.packedOff = f.h.packedOff + f.h.PackedSize
-	h.blocknum = f.h.blocknum + 1
-	f.h = h
-	f.offset = h.dataOff
-	f.blocks.addBlock(h)
-	return nil
 }
 
 // next advances to the next packed file in the RAR archive.

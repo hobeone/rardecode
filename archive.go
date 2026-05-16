@@ -84,6 +84,7 @@ type fileBlockHeader struct {
 	first     bool             // first block in file
 	last      bool             // last block in file
 	arcSolid  bool             // archive is solid
+	isService bool             // true for service headers (type 3: QO, CMT, RR, etc.)
 	dataOff   int64            // offset to data for file block in archive volume
 	packedOff int64            // offset to data in packed file
 	blocknum  int              // number for current block in file
