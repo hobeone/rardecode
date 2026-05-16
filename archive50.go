@@ -215,10 +215,17 @@ func (a *archive50) getKeys(kdfCount int, salt, check []byte) ([][]byte, error) 
 // parseFileEncryptionRecord processes the optional file encryption record from a file header.
 func (a *archive50) parseFileEncryptionRecord(b readBuf, f *fileBlockHeader) error {
 	f.Encrypted = true
-	if ver := b.uvarint(); ver != 0 {
+	ver, err := b.uvarint()
+	if err != nil {
+		return err
+	}
+	if ver != 0 {
 		return ErrUnknownEncryptMethod
 	}
-	flags := b.uvarint()
+	flags, err := b.uvarint()
+	if err != nil {
+		return err
+	}
 	if len(b) < 33 {
 		return ErrCorruptEncryptData
 	}
@@ -282,7 +289,11 @@ func readUnixNanoseconds(b *readBuf) (time.Duration, error) {
 // parseFilePrecisionTimeRecord processes the optional high precision time record from a file header.
 func (a *archive50) parseFilePrecisionTimeRecord(b *readBuf, f *fileBlockHeader) error {
 	var err error
-	flags := b.uvarint()
+	flagsV, err := b.uvarint()
+	if err != nil {
+		return err
+	}
+	flags := flagsV
 	isUnixTime := flags&file5ExtraTimeIsUnixTime > 0
 	if flags&file5ExtraTimeHasMTime > 0 {
 		if isUnixTime {
@@ -347,12 +358,24 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 	f.first = h.flags&block5DataNotFirst == 0
 	f.last = h.flags&block5DataNotLast == 0
 
-	flags := h.data.uvarint() // file flags
+	flagsV, err := h.data.uvarint() // file flags
+	if err != nil {
+		return nil, err
+	}
+	flags := flagsV
 	f.IsDir = flags&file5IsDir > 0
 	f.UnKnownSize = flags&file5UnpSizeUnknown > 0
-	f.UnPackedSize = int64(h.data.uvarint())
+	unpackedSizeV, err := h.data.uvarint()
+	if err != nil {
+		return nil, err
+	}
+	f.UnPackedSize = int64(unpackedSizeV)
 	f.PackedSize = h.dataSize
-	f.Attributes = int64(h.data.uvarint())
+	attrsV, err := h.data.uvarint()
+	if err != nil {
+		return nil, err
+	}
+	f.Attributes = int64(attrsV)
 	if flags&file5HasUnixMtime > 0 {
 		if len(h.data) < 4 {
 			return nil, ErrCorruptFileHeader
@@ -369,7 +392,11 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 		}
 	}
 
-	flags = h.data.uvarint() // compression flags
+	flagsV, err = h.data.uvarint() // compression flags
+	if err != nil {
+		return nil, err
+	}
+	flags = flagsV
 	f.Solid = flags&file5CompSolid > 0
 	f.arcSolid = a.solid
 	method := (flags >> 7) & 7 // compression method (0 == none)
@@ -391,7 +418,11 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 			return nil, ErrUnknownDecoder
 		}
 	}
-	switch h.data.uvarint() {
+	hostOSV, err := h.data.uvarint()
+	if err != nil {
+		return nil, err
+	}
+	switch hostOSV {
 	case 0:
 		f.HostOS = HostOSWindows
 	case 1:
@@ -399,7 +430,11 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 	default:
 		f.HostOS = HostOSUnknown
 	}
-	nlen := int(h.data.uvarint())
+	nlenV, err := h.data.uvarint()
+	if err != nil {
+		return nil, err
+	}
+	nlen := int(nlenV)
 	if len(h.data) < nlen {
 		return nil, ErrCorruptFileHeader
 	}
@@ -414,7 +449,10 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 				f.errs = append(f.errs, encErr)
 			}
 		case 2: // file hash
-			hashType := e.data.uvarint()
+			hashType, err := e.data.uvarint()
+			if err != nil {
+				return nil, err
+			}
 			if hashType == 0 && len(e.data) >= blake2sSize256 {
 				f.sum = slices.Clone(e.data.bytes(blake2sSize256))
 				if f.first {
@@ -424,8 +462,14 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 		case 3:
 			err = a.parseFilePrecisionTimeRecord(&e.data, f)
 		case 4: // version
-			_ = e.data.uvarint() // ignore flags field
-			f.Version = int(e.data.uvarint())
+			if _, err = e.data.uvarint(); err != nil { // ignore flags field
+				return nil, err
+			}
+			versionV, err := e.data.uvarint()
+			if err != nil {
+				return nil, err
+			}
+			f.Version = int(versionV)
 		case 5:
 			// TODO: redirection
 		case 6:
@@ -443,10 +487,17 @@ func (a *archive50) parseEncryptionBlock(b readBuf) error {
 	if a.pass == nil {
 		return ErrArchiveEncrypted
 	}
-	if ver := b.uvarint(); ver != 0 {
+	ver, err := b.uvarint()
+	if err != nil {
+		return err
+	}
+	if ver != 0 {
 		return ErrUnknownEncryptMethod
 	}
-	flags := b.uvarint()
+	flags, err := b.uvarint()
+	if err != nil {
+		return err
+	}
 	if len(b) < 17 {
 		return ErrCorruptEncryptData
 	}
@@ -469,14 +520,21 @@ func (a *archive50) parseEncryptionBlock(b readBuf) error {
 	return nil
 }
 
-func (a *archive50) parseArcBlock(h *blockHeader50) int {
-	flags := h.data.uvarint()
+func (a *archive50) parseArcBlock(h *blockHeader50) (int, error) {
+	flags, err := h.data.uvarint()
+	if err != nil {
+		return -1, err
+	}
 	a.multi = flags&arc5MultiVol > 0
 	a.solid = flags&arc5Solid > 0
 	if flags&arc5VolNum > 0 {
-		return int(h.data.uvarint())
+		v, err := h.data.uvarint()
+		if err != nil {
+			return -1, err
+		}
+		return int(v), nil
 	}
-	return -1
+	return -1, nil
 }
 
 func (a *archive50) readBlockHeader(r byteReader) (*blockHeader50, error) {
@@ -503,9 +561,12 @@ func (a *archive50) readBlockHeader(r byteReader) (*blockHeader50, error) {
 	}
 	b := readBuf(sizeBuf)
 	crc := b.uint32()
-
 	// Check if header size is valid
-	size := int(b.uvarint())
+	sizeV, err := b.uvarint() // header size
+	if err != nil {
+		return nil, err
+	}
+	size := int(sizeV)
 	bufSize := 3 + size - len(b)
 	if bufSize < 4 || size > maxHeaderSize {
 		return nil, ErrBadBlockHeader
@@ -527,15 +588,29 @@ func (a *archive50) readBlockHeader(r byteReader) (*blockHeader50, error) {
 
 	b = buf[3-len(b):]
 	h := new(blockHeader50)
-	h.htype = b.uvarint()
-	h.flags = b.uvarint()
+	h.htype, err = b.uvarint()
+	if err != nil {
+		return nil, err
+	}
+	h.flags, err = b.uvarint()
+	if err != nil {
+		return nil, err
+	}
 
 	var extraSize int
 	if h.flags&block5HasExtra > 0 {
-		extraSize = int(b.uvarint())
+		extraSizeV, err := b.uvarint()
+		if err != nil {
+			return nil, err
+		}
+		extraSize = int(extraSizeV)
 	}
 	if h.flags&block5HasData > 0 {
-		h.dataSize = int64(b.uvarint())
+		dataSizeV, err := b.uvarint()
+		if err != nil {
+			return nil, err
+		}
+		h.dataSize = int64(dataSizeV)
 	}
 	if len(b) < extraSize {
 		return nil, ErrCorruptBlockHeader
@@ -544,12 +619,19 @@ func (a *archive50) readBlockHeader(r byteReader) (*blockHeader50, error) {
 
 	// read header extra records
 	for len(b) > 0 {
-		size = int(b.uvarint())
+		sizeV, err := b.uvarint()
+		if err != nil {
+			return nil, err
+		}
+		size = int(sizeV)
 		if len(b) < size {
 			return nil, ErrCorruptBlockHeader
 		}
 		data := readBuf(b.bytes(size))
-		ftype := data.uvarint()
+		ftype, err := data.uvarint()
+		if err != nil {
+			return nil, err
+		}
 		h.extra = append(h.extra, extra{ftype, data})
 	}
 
@@ -587,7 +669,10 @@ func (a *archive50) init(br *bufVolumeReader) (int, error) {
 	if h.htype != block5Arc {
 		return volnum, ErrNoArchiveBlock
 	}
-	volnum = a.parseArcBlock(h)
+	volnum, err = a.parseArcBlock(h)
+	if err != nil {
+		return volnum, err
+	}
 	return volnum, nil
 }
 
@@ -603,7 +688,10 @@ func (a *archive50) nextBlock(br *bufVolumeReader) (*fileBlockHeader, error) {
 		case block5File:
 			return a.parseFileHeader(h)
 		case block5End:
-			flags := h.data.uvarint()
+			flags, err := h.data.uvarint()
+			if err != nil {
+				return nil, err
+			}
 			if flags&endArc5NotLast == 0 || !a.multi {
 				return nil, io.EOF
 			}
