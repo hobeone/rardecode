@@ -428,14 +428,17 @@ func not(v *vm, bm bool, op []operand) {
 func shl(v *vm, bm bool, op []operand) {
 	v1 := op[0].get(v, bm)
 	v2 := op[1].get(v, bm)
-	r := v1 << v2
+	var r uint32
+	if v2 < 32 {
+		r = v1 << v2
+	}
 	op[0].set(v, bm, r)
 	if r == 0 {
 		v.fl = flagZ
 	} else {
 		v.fl = r & flagS
 	}
-	if (v1<<(v2-1))&0x80000000 > 0 {
+	if v2 > 0 && v2 <= 32 && (v1<<(v2-1))&0x80000000 > 0 {
 		v.fl |= flagC
 	}
 }
@@ -443,14 +446,17 @@ func shl(v *vm, bm bool, op []operand) {
 func shr(v *vm, bm bool, op []operand) {
 	v1 := op[0].get(v, bm)
 	v2 := op[1].get(v, bm)
-	r := v1 >> v2
+	var r uint32
+	if v2 < 32 {
+		r = v1 >> v2
+	}
 	op[0].set(v, bm, r)
 	if r == 0 {
 		v.fl = flagZ
 	} else {
 		v.fl = r & flagS
 	}
-	if (v1>>(v2-1))&0x1 > 0 {
+	if v2 > 0 && v2 <= 32 && (v1>>(v2-1))&0x1 > 0 {
 		v.fl |= flagC
 	}
 }
@@ -458,14 +464,19 @@ func shr(v *vm, bm bool, op []operand) {
 func sar(v *vm, bm bool, op []operand) {
 	v1 := op[0].get(v, bm)
 	v2 := op[1].get(v, bm)
-	r := uint32(int32(v1) >> v2)
+	var r uint32
+	if v2 < 32 {
+		r = uint32(int32(v1) >> v2)
+	} else if int32(v1) < 0 {
+		r = 0xFFFFFFFF // sign extension
+	}
 	op[0].set(v, bm, r)
 	if r == 0 {
 		v.fl = flagZ
 	} else {
 		v.fl = r & flagS
 	}
-	if (v1>>(v2-1))&0x1 > 0 {
+	if v2 > 0 && v2 <= 32 && (v1>>(v2-1))&0x1 > 0 {
 		v.fl |= flagC
 	}
 }
