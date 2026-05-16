@@ -352,8 +352,17 @@ func (a *archive50) parseFilePrecisionTimeRecord(b *readBuf, f *fileBlockHeader)
 	return nil
 }
 
-func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) {
-	f := new(fileBlockHeader)
+func (a *archive50) parseFileHeader(h *blockHeader50) (f *fileBlockHeader, err error) {
+	// readBuf's fixed-size accessors (byte, uint16, uint32, uint64, bytes)
+	// panic on short buffers for performance. Recover here to convert
+	// index-out-of-range panics from corrupt archives into errors.
+	defer func() {
+		if r := recover(); r != nil {
+			f = nil
+			err = ErrCorruptBlockHeader
+		}
+	}()
+	f = new(fileBlockHeader)
 	f.UnixUID = -1
 	f.UnixGID = -1
 
