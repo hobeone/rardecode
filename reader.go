@@ -24,6 +24,16 @@ const (
 	HostOSBeOS    = 6
 )
 
+// FileHeader RedirType values per RAR5 spec "File system redirection record".
+const (
+	RedirNone       = 0 // not a redirection (default)
+	RedirUnixSymlink = 1 // Unix symbolic link
+	RedirWinSymlink  = 2 // Windows symbolic link
+	RedirWinJunction = 3 // Windows junction (reparse point)
+	RedirHardLink    = 4 // Hard link
+	RedirFileCopy    = 5 // File copy
+)
+
 const (
 	maxPassword = int(128)
 )
@@ -53,7 +63,8 @@ type FileHeader struct {
 	CreationTime     time.Time // creation time (non-zero if set)
 	AccessTime       time.Time // access time (non-zero if set)
 	Version          int       // file version
-	RedirType        int       // redirection type (0=none, 1=unix symlink, 2=win symlink file, 3=win symlink dir, 4=hardlink, 5=win junction)
+	RedirType        int       // redirection type: RedirNone, RedirUnixSymlink, RedirWinSymlink, RedirWinJunction, RedirHardLink, or RedirFileCopy
+	RedirIsDir       bool      // redirection target is a directory (spec: redirection flags 0x0001)
 	RedirTarget      string    // redirection target path (empty if not a redirect)
 	UnixOwner        string    // Unix owner name (empty if not set)
 	UnixGroup        string    // Unix group name (empty if not set)

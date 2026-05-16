@@ -478,9 +478,11 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (*fileBlockHeader, error) 
 				return nil, err
 			}
 			f.RedirType = int(redirTypeV)
-			if _, err = e.data.uvarint(); err != nil { // flags (reserved)
+			redirFlagsV, err := e.data.uvarint() // redirection flags
+			if err != nil {
 				return nil, err
 			}
+			f.RedirIsDir = redirFlagsV&0x0001 != 0 // 0x0001 = link target is directory
 			nlenV, err := e.data.uvarint() // name length
 			if err != nil {
 				return nil, err
