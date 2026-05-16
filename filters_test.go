@@ -40,3 +40,15 @@ func TestFilterDelta_ValidInput(t *testing.T) {
 		}
 	}
 }
+
+func TestFilterRGBV3_SmallR0(t *testing.T) {
+	r := map[int]uint32{0: 0, 1: 0}
+	buf := []byte{1, 2, 3, 4, 5, 6}
+	got, err := filterRGBV3(r, nil, buf, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if &got[0] != &buf[0] {
+		t.Error("expected original buf returned for r[0]=0")
+	}
+}
