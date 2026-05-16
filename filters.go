@@ -400,6 +400,9 @@ func getV3Filter(code []byte) (v3Filter, error) {
 		if err != nil {
 			return nil, err
 		}
+		if m > vmSize {
+			return nil, ErrInvalidFilter
+		}
 		f.static = make([]byte, m+1)
 		_, err = io.ReadFull(r, f.static)
 		if err != nil {
