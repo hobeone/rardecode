@@ -812,6 +812,9 @@ func (m *model) decodeSymbol2(c context, numMasked int) (*state, error) {
 	n = 0
 	for hi <= count {
 		n++
+		if n >= len(sl) {
+			return nil, ErrCorruptPPM
+		}
 		hi += uint32(states[sl[n]].freq)
 	}
 	s := &states[sl[n]]
