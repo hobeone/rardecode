@@ -17,7 +17,7 @@ const (
 	// block types
 	block5Arc  = 1
 	block5File = 2
-	// block5Service = 3
+	block5Service = 3
 	block5Encrypt = 4
 	block5End     = 5
 
@@ -740,6 +740,10 @@ func (a *archive50) nextBlock(br *bufVolumeReader) (*fileBlockHeader, error) {
 		}
 		switch h.htype {
 		case block5File:
+			return a.parseFileHeader(h)
+		case block5Service:
+			// Service headers (type 3) use the same structure as file headers.
+			// Parse them to expose metadata (e.g., "CMT" archive comments).
 			return a.parseFileHeader(h)
 		case block5End:
 			flags, err := h.data.uvarint()
