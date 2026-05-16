@@ -63,6 +63,7 @@ type FileHeader struct {
 	CreationTime     time.Time // creation time (non-zero if set)
 	AccessTime       time.Time // access time (non-zero if set)
 	Version          int       // file version
+	IsService        bool      // true if this is a service header (type 3), not a regular file
 	RedirType        int       // redirection type: RedirNone, RedirUnixSymlink, RedirWinSymlink, RedirWinJunction, RedirHardLink, or RedirFileCopy
 	RedirIsDir       bool      // redirection target is a directory (spec: redirection flags 0x0001)
 	RedirTarget      string    // redirection target path (empty if not a redirect)
