@@ -416,7 +416,10 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (f *fileBlockHeader, err e
 	flags = flagsV
 	f.Solid = flags&file5CompSolid > 0
 	f.arcSolid = a.solid
-	method := (flags >> 7) & 7 // compression method (0 == none)
+	method := (flags >> 7) & 7 // compression method (0 == none, 1-5 valid per spec)
+	if method > 5 {
+		return nil, ErrUnknownDecoder
+	}
 	if f.first && method != 0 {
 		unpackver := flags & file5CompAlgorithm
 		switch unpackver {
