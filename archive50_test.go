@@ -25,8 +25,8 @@ func TestReadBlockHeaderZeroSize(t *testing.T) {
 
 	a := &archive50{}
 	_, err := a.readBlockHeader(&buf)
-	if err != ErrCorruptBlockHeader {
-		t.Errorf("expected ErrCorruptBlockHeader for zero-size header, got: %v", err)
+	if err != ErrBadBlockHeader {
+		t.Errorf("expected ErrBadBlockHeader for zero-size header, got: %v", err)
 	}
 }
 
