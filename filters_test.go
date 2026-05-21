@@ -122,3 +122,76 @@ func BenchmarkFilterArm_Comparison(b *testing.B) {
 		})
 	}
 }
+
+func filterRGBGeneric(res []byte, posR int) []byte {
+	for i := posR; i < len(res)-2; i += 3 {
+		c := res[i+1]
+		res[i] += c
+		res[i+2] += c
+	}
+	return res
+}
+
+func TestFilterRGB(t *testing.T) {
+	sizes := []int{0, 2, 3, 5, 14, 15, 17, 30, 45, 100, 1000}
+	for _, size := range sizes {
+		buf1 := make([]byte, size)
+		buf2 := make([]byte, size)
+		for i := 0; i < size; i++ {
+			buf1[i] = byte(i*3 + 7)
+		}
+		copy(buf2, buf1)
+
+		posR := 0
+		if size > 5 {
+			posR = 3
+		}
+
+		var start int = posR
+		if filterRGBSIMD != nil {
+			start = filterRGBSIMD(buf1, posR)
+		}
+		for i := start; i < len(buf1)-2; i += 3 {
+			c := buf1[i+1]
+			buf1[i] += c
+			buf1[i+2] += c
+		}
+
+		expected := filterRGBGeneric(buf2, posR)
+		if !bytes.Equal(buf1, expected) {
+			t.Fatalf("size %d: got %x, want %x", size, buf1, expected)
+		}
+	}
+}
+
+func BenchmarkFilterRGB_Comparison(b *testing.B) {
+	for _, size := range []int{15, 1020, 65535} {
+		buf1 := make([]byte, size)
+		for i := 0; i < size; i++ {
+			buf1[i] = byte(i)
+		}
+		buf2 := make([]byte, size)
+		copy(buf2, buf1)
+
+		b.Run(fmt.Sprintf("Generic/%d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = filterRGBGeneric(buf1, 0)
+			}
+		})
+
+		b.Run(fmt.Sprintf("AVX/%d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				var start int
+				if filterRGBSIMD != nil {
+					start = filterRGBSIMD(buf2, 0)
+				}
+				for i := start; i < len(buf2)-2; i += 3 {
+					c := buf2[i+1]
+					buf2[i] += c
+					buf2[i+2] += c
+				}
+			}
+		})
+	}
+}
+

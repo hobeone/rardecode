@@ -152,6 +152,8 @@ func abs(n int) int {
 	return n
 }
 
+var filterRGBSIMD func(res []byte, posR int) int
+
 func filterRGBV3(r map[int]uint32, global, buf []byte, offset int64) ([]byte, error) {
 	width := int(int32(r[0]) - 3)
 	posR := int(r[1])
@@ -195,7 +197,11 @@ func filterRGBV3(r map[int]uint32, global, buf []byte, offset int64) ([]byte, er
 		}
 
 	}
-	for i := posR; i < len(res)-2; i += 3 {
+	start := posR
+	if filterRGBSIMD != nil {
+		start = filterRGBSIMD(res, posR)
+	}
+	for i := start; i < len(res)-2; i += 3 {
 		c := res[i+1]
 		res[i] += c
 		res[i+2] += c
