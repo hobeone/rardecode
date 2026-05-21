@@ -41,9 +41,25 @@ var (
 	byteMask = []int{4, 4, 6, 6, 0, 0, 7, 7, 4, 4, 0, 0, 4, 4, 0, 0}
 )
 
+var filterE8ScanSIMD func(buf []byte, c byte) int
+
 func filterE8(c byte, v5 bool, buf []byte, offset int64) ([]byte, error) {
 	off := int32(offset)
 	for b := buf; len(b) >= 5; {
+		if filterE8ScanSIMD != nil && len(b) >= 32 {
+			idx := filterE8ScanSIMD(b, c)
+			if idx > 0 {
+				if idx > len(b)-5 {
+					idx = len(b)
+				}
+				off += int32(idx)
+				b = b[idx:]
+				if len(b) < 5 {
+					break
+				}
+			}
+		}
+
 		ch := b[0]
 		b = b[1:]
 		off++

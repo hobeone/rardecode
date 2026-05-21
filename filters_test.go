@@ -195,3 +195,76 @@ func BenchmarkFilterRGB_Comparison(b *testing.B) {
 	}
 }
 
+func TestFilterE8(t *testing.T) {
+	sizes := []int{0, 4, 5, 10, 31, 32, 33, 64, 100, 1024, 1024 + 17}
+	for _, size := range sizes {
+		for _, c := range []byte{0xe8, 0xe9} {
+			for _, v5 := range []bool{false, true} {
+				buf1 := make([]byte, size)
+				for i := 0; i < size; i++ {
+					if i%17 == 3 {
+						buf1[i] = 0xe8
+					} else if i%17 == 7 {
+						buf1[i] = 0xe9
+					} else {
+						buf1[i] = byte(i * 13)
+					}
+				}
+				buf2 := make([]byte, size)
+				copy(buf2, buf1)
+
+				savedSIMD := filterE8ScanSIMD
+				filterE8ScanSIMD = nil
+				gotGeneric, err := filterE8(c, v5, buf1, 1000)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				filterE8ScanSIMD = savedSIMD
+				gotSIMD, err := filterE8(c, v5, buf2, 1000)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if !bytes.Equal(gotGeneric, gotSIMD) {
+					t.Fatalf("size=%d, c=%x, v5=%v: SIMD result does not match Generic.\nGeneric: %x\nSIMD:    %x", size, c, v5, gotGeneric, gotSIMD)
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkFilterE8_Comparison(b *testing.B) {
+	for _, size := range []int{32, 1024, 65536} {
+		buf1 := make([]byte, size)
+		for i := 0; i < size; i++ {
+			if i%128 == 0 {
+				buf1[i] = 0xe8
+			} else {
+				buf1[i] = byte(i)
+			}
+		}
+		buf2 := make([]byte, size)
+		copy(buf2, buf1)
+
+		b.Run(fmt.Sprintf("Generic/%d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				savedSIMD := filterE8ScanSIMD
+				filterE8ScanSIMD = nil
+				_, _ = filterE8(0xe9, false, buf1, 100)
+				filterE8ScanSIMD = savedSIMD
+			}
+		})
+
+		b.Run(fmt.Sprintf("AVX2/%d", size), func(b *testing.B) {
+			if filterE8ScanSIMD == nil {
+				b.Skip("AVX2 scanning is not available")
+			}
+			for i := 0; i < b.N; i++ {
+				_, _ = filterE8(0xe9, false, buf2, 100)
+			}
+		})
+	}
+}
+
+
