@@ -11,8 +11,8 @@ const (
 	flagZ = 2          // Zero
 	flagS = 0x80000000 // Sign
 
-	maxCommands    = 25000000 // maximum number of commands that can be run in a program
-	maxCodeCommands = 1000000 // maximum number of decoded commands in a program
+	maxCommands     = 25000000 // maximum number of commands that can be run in a program
+	maxCodeCommands = 1000000  // maximum number of decoded commands in a program
 
 	vmRegs = 8       // number if registers
 	vmSize = 0x40000 // memory size

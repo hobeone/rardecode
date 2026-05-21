@@ -15,8 +15,8 @@ import (
 
 const (
 	// block types
-	block5Arc  = 1
-	block5File = 2
+	block5Arc     = 1
+	block5File    = 2
 	block5Service = 3
 	block5Encrypt = 4
 	block5End     = 5
@@ -519,7 +519,7 @@ func (a *archive50) parseFileHeader(h *blockHeader50) (f *fileBlockHeader, err e
 				return nil, err
 			}
 			f.RedirIsDir = redirFlagsV&0x0001 != 0 // 0x0001 = link target is directory
-			nlenV, err := e.data.uvarint() // name length
+			nlenV, err := e.data.uvarint()         // name length
 			if err != nil {
 				return nil, err
 			}

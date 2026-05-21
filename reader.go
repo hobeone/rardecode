@@ -26,7 +26,7 @@ const (
 
 // FileHeader RedirType values per RAR5 spec "File system redirection record".
 const (
-	RedirNone       = 0 // not a redirection (default)
+	RedirNone        = 0 // not a redirection (default)
 	RedirUnixSymlink = 1 // Unix symbolic link
 	RedirWinSymlink  = 2 // Windows symbolic link
 	RedirWinJunction = 3 // Windows junction (reparse point)

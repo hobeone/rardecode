@@ -115,3 +115,33 @@ func TestBLAKE2spSumDoesNotMutate(t *testing.T) {
 		t.Error("Sum after additional Write should differ")
 	}
 }
+
+func BenchmarkBLAKE2sp(b *testing.B) {
+	data := make([]byte, 1024*1024) // 1MB data
+	for i := range data {
+		data[i] = byte(i)
+	}
+	b.ResetTimer()
+	b.SetBytes(int64(len(data)))
+	for i := 0; i < b.N; i++ {
+		h := newBLAKE2sp()
+		h.Write(data)
+		h.Sum(nil)
+	}
+}
+
+func BenchmarkCompress8Generic(b *testing.B) {
+	var ctx avoContext
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		compress8Generic(&ctx)
+	}
+}
+
+func BenchmarkCompress8AVX2(b *testing.B) {
+	var ctx avoContext
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		compress8(&ctx)
+	}
+}

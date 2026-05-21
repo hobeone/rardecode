@@ -300,12 +300,61 @@ func (h *blake2sp) Write(p []byte) (int, error) {
 	return nn, nil
 }
 
+type avoContext struct {
+	h [8][8]uint32
+	t [2][8]uint32
+	f [2][8]uint32
+	m [16][8]uint32
+}
+
+var compress8 = compress8Generic
+
 // distributeBlock distributes a full interleave block across the 8 leaves.
 // Each leaf gets one blake2sBlockSize chunk.
 func (h *blake2sp) distributeBlock(data []byte) {
-	for i := 0; i < blake2spFanout; i++ {
-		off := i * blake2sBlockSize
-		h.leaves[i].update(data[off : off+blake2sBlockSize])
+	if h.leaves[0].bufLen == blake2sBlockSize {
+		// All 8 leaves have a full block buffered. Compress them in parallel!
+		var ctx avoContext
+		for i := 0; i < blake2spFanout; i++ {
+			// Update the counter on leaves first
+			h.leaves[i].t[0] += uint32(blake2sBlockSize)
+			if h.leaves[i].t[0] < uint32(blake2sBlockSize) {
+				h.leaves[i].t[1]++
+			}
+
+			for j := 0; j < 8; j++ {
+				ctx.h[j][i] = h.leaves[i].h[j]
+			}
+			ctx.t[0][i] = h.leaves[i].t[0]
+			ctx.t[1][i] = h.leaves[i].t[1]
+			ctx.f[0][i] = h.leaves[i].f[0]
+			ctx.f[1][i] = h.leaves[i].f[1]
+
+			block := h.leaves[i].buf[:]
+			for j := 0; j < 16; j++ {
+				ctx.m[j][i] = binary.LittleEndian.Uint32(block[j*4:])
+			}
+		}
+
+		// Compress 8 blocks in parallel
+		compress8(&ctx)
+
+		// Copy back transposed states and write new inputs to buffers
+		for i := 0; i < blake2spFanout; i++ {
+			for j := 0; j < 8; j++ {
+				h.leaves[i].h[j] = ctx.h[j][i]
+			}
+
+			off := i * blake2sBlockSize
+			copy(h.leaves[i].buf[:], data[off:off+blake2sBlockSize])
+		}
+	} else {
+		// First block: just buffer it without compression
+		for i := 0; i < blake2spFanout; i++ {
+			off := i * blake2sBlockSize
+			copy(h.leaves[i].buf[:], data[off:off+blake2sBlockSize])
+			h.leaves[i].bufLen = blake2sBlockSize
+		}
 	}
 }
 
