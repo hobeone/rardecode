@@ -1,6 +1,10 @@
 package rardecode
 
-import "testing"
+import (
+	"bytes"
+	"fmt"
+	"testing"
+)
 
 func TestFilterDelta_ZeroChannels(t *testing.T) {
 	buf := []byte{1, 2, 3, 4}
@@ -50,5 +54,71 @@ func TestFilterRGBV3_SmallR0(t *testing.T) {
 	}
 	if &got[0] != &buf[0] {
 		t.Error("expected original buf returned for r[0]=0")
+	}
+}
+
+func filterArmGeneric(buf []byte, offset int64) []byte {
+	for i := 0; len(buf)-i > 3; i += 4 {
+		if buf[i+3] == 0xeb {
+			n := uint(buf[i])
+			n += uint(buf[i+1]) * 0x100
+			n += uint(buf[i+2]) * 0x10000
+			n -= (uint(offset) + uint(i)) / 4
+			buf[i] = byte(n)
+			buf[i+1] = byte(n >> 8)
+			buf[i+2] = byte(n >> 16)
+		}
+	}
+	return buf
+}
+
+func TestFilterArm(t *testing.T) {
+	sizes := []int{0, 3, 4, 15, 32, 35, 64, 100, 1024, 1024 + 13}
+	for _, size := range sizes {
+		buf1 := make([]byte, size)
+		buf2 := make([]byte, size)
+		for i := 0; i < size; i++ {
+			if i%4 == 3 && i%8 == 3 {
+				buf1[i] = 0xeb
+			} else {
+				buf1[i] = byte(i * 17)
+			}
+		}
+		copy(buf2, buf1)
+
+		offset := int64(12345)
+		got, err := filterArm(buf1, offset)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := filterArmGeneric(buf2, offset)
+		if !bytes.Equal(got, expected) {
+			t.Fatalf("size %d: got %x, want %x", size, got, expected)
+		}
+	}
+}
+
+func BenchmarkFilterArm_Comparison(b *testing.B) {
+	for _, size := range []int{32, 1024, 65536} {
+		buf1 := make([]byte, size)
+		for i := 0; i < size; i++ {
+			if i%4 == 3 {
+				buf1[i] = 0xeb
+			}
+		}
+		buf2 := make([]byte, size)
+		copy(buf2, buf1)
+
+		b.Run(fmt.Sprintf("Generic/%d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = filterArmGeneric(buf1, 100)
+			}
+		})
+
+		b.Run(fmt.Sprintf("AVX2/%d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, _ = filterArm(buf2, 100)
+			}
+		})
 	}
 }
